@@ -1,6 +1,7 @@
 # AppCat Ruleset Collector
 
-A Java application that collects and processes AppCat rulesets and exports them to Excel format.
+A Java application that collects and processes AppCat rulesets and exports them to Excel format. 
+Note: to leverage AI to quickly summarize the ruleset, ChatGPT or DeepSeek are recommended.
 
 ## Features
 
