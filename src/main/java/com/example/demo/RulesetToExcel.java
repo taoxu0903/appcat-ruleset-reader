@@ -1,7 +1,5 @@
 package com.example.demo;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.WorkbookUtil;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -13,8 +11,100 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-@SpringBootApplication
 public class RulesetToExcel {
+
+    /**
+     * Analyze function for action=analyze.
+     * Logic:
+     * 1. For each sheet in the Excel file at outputPath:
+     *    - Add a new column "spring specific?".
+     *    - For each row, check the "When" column. If it contains "spring" or "properties",
+     *      mark "spring specific?" as "Yes", otherwise "No".
+     * 2. Save the modified Excel file back to outputPath.
+     */
+    public static void recognizeSpringRules(String outputPath) {
+        String excelFile = outputPath + "/appcat-ruleset.xlsx";
+        // Use a single try-with-resources block for both input and workbook
+        try (FileInputStream fis = new FileInputStream(excelFile);
+             XSSFWorkbook workbook = new XSSFWorkbook(fis)) {
+
+            for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+                Sheet sheet = workbook.getSheetAt(i);
+
+                // Find the "When" column index from the title row (assume it's the second row, index 1)
+                Row titleRow = sheet.getRow(1);
+                if (titleRow == null) continue;
+                int lastCol = titleRow.getLastCellNum();
+
+                // if "spring specific?" column already exists, skip adding it and refer to it by springHeader cell; 
+                // otherwise, create it and refer to it by springHeader cell.
+                Cell springHeader = null;
+                for (int c = 0; c < lastCol; c++) {
+                    Cell cell = titleRow.getCell(c);
+                    if (cell != null && "spring specific?".equalsIgnoreCase(cell.getStringCellValue().trim())) {
+                        springHeader = cell;
+                        break;
+                    }
+                }
+                Boolean springHeaderExists = (springHeader != null);
+                // If "spring specific?" column does not exist, create it.
+                if (springHeader == null) {
+                    springHeader = titleRow.createCell(lastCol);
+                    springHeader.setCellValue("spring specific?");
+                }
+                lastCol = springHeader.getColumnIndex();
+                int lastRow = sheet.getLastRowNum();
+                for (int r = 2; r <= lastRow; r++) {
+                    Row row = sheet.getRow(r);
+                    if (row == null) continue;
+                    String result = isSpringSpecificRule(row) ? "Yes" : "No";
+                    Cell springCell = springHeaderExists ? row.getCell(lastCol) : row.createCell(lastCol);
+                    springCell.setCellValue(result);
+                }
+                // Optionally, auto-size the new column
+                sheet.autoSizeColumn(lastCol);
+            }
+
+            // Save and close workbook and output stream in try-with-resources
+            try (FileOutputStream fos = new FileOutputStream(excelFile)) {
+                workbook.write(fos);
+                fos.flush();
+            }
+            workbook.close(); // Explicitly close workbook to release file lock
+            System.out.println("Analyze completed and Excel updated.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static boolean isSpringSpecificRule (Row row) {
+        if (row == null) return false;
+
+        // Check all columns' text on the row:
+        // 1. get the text of each cell in the row
+        // 2. if the text contains "spring", return true; especially if for "When" column, if it contains "properties|", return true.
+        int whenCol = -1;
+        int lastCol = row.getLastCellNum();
+        for (int c = 0; c < lastCol; c++) {
+            Cell cell = row.getCell(c);
+            String cellText = (cell != null) ? cell.toString().toLowerCase() : "";
+            if (cellText.contains("spring")) {
+                return true;
+            }
+            if (whenCol == -1 && cell != null && "when".equalsIgnoreCase(cell.getSheet().getRow(1).getCell(c).getStringCellValue().trim())) {
+                whenCol = c;
+            }
+        }
+        // Now, check "When" column for "properties|"
+        if (whenCol != -1) {
+            Cell whenCell = row.getCell(whenCol);
+            String whenVal = (whenCell != null) ? whenCell.toString().toLowerCase() : "";
+            if (whenVal.contains("properties|")) {
+                return true;
+            }
+        }
+        return false;
+    }   
 
     public static void execute(String rulesetPath, String outputPath) {
         execute(rulesetPath, outputPath, null);
