@@ -37,7 +37,7 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar rulesetpath=<path> outputpath=<path> fi
 ### Example
 
 ```bash
-java -jar target/demo-0.0.1-SNAPSHOT.jar rulesetpath=/path/to/rulesets outputpath=./output filters=azure,cloud-readiness,openjdk11
+java -jar target/demo-0.0.1-SNAPSHOT.jar rulesetpath=/path/to/rulesets outputpath=./output filters=azure,cloud-readiness,openjdk11,openjdk17,openjdk21,os
 ```
 
 ## License
