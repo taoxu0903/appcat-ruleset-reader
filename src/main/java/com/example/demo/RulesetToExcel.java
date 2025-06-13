@@ -114,7 +114,19 @@ public class RulesetToExcel {
         String inputDir = rulesetPath; // 更改为您的实际路径
         String outputFile = outputPath + "/appcat-ruleset.xlsx";
 
-        try (Workbook workbook = new XSSFWorkbook()) {
+        // If file exists, delete it to clean content before writing
+        File excelFile = new File(outputFile);
+        if (excelFile.exists()) {
+            if (!excelFile.delete()) {
+                System.err.println("无法删除已存在的Excel文件: " + outputFile);
+                return;
+            }
+        }
+
+        Workbook workbook = null;
+        FileOutputStream fos = null;
+        try {
+            workbook = new XSSFWorkbook();
             File rootDir = new File(inputDir);
             if (!rootDir.isDirectory()) {
                 System.err.println("指定的路径不是一个目录！");
@@ -123,12 +135,23 @@ public class RulesetToExcel {
             processRulesetFolder(rootDir, workbook, filters);
 
             // 写入Excel文件
-            try (FileOutputStream fos = new FileOutputStream(outputFile)) {
-                workbook.write(fos);
-                System.out.println("Excel文件生成成功！");
-            }
+            fos = new FileOutputStream(outputFile);
+            workbook.write(fos);
+            fos.flush();
+            System.out.println("Excel文件生成成功！");
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            try {
+                if (fos != null) fos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try {
+                if (workbook != null) workbook.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -207,6 +230,10 @@ public class RulesetToExcel {
         titleRow.createCell(0).setCellValue("RuleID");
         titleRow.createCell(1).setCellValue("When");
         titleRow.createCell(2).setCellValue("Description & Message");
+        titleRow.createCell(3).setCellValue("Source");
+        titleRow.createCell(4).setCellValue("Target");
+        titleRow.createCell(5).setCellValue("Domain");
+        titleRow.createCell(6).setCellValue("Category");
 
         // 写入规则数据
         for (RuleData rule : rules) {
@@ -214,11 +241,18 @@ public class RulesetToExcel {
             dataRow.createCell(0).setCellValue(rule.ruleId);
             dataRow.createCell(1).setCellValue(rule.when);
             dataRow.createCell(2).setCellValue(rule.mergedDescription);
+            dataRow.createCell(3).setCellValue(rule.source);
+            dataRow.createCell(4).setCellValue(rule.target);
+            dataRow.createCell(5).setCellValue(rule.domain);
+            dataRow.createCell(6).setCellValue(rule.category);
         }
 
-        // 自动调整列宽
-        for (int i = 0; i < 3; i++) {
-            sheet.autoSizeColumn(i);
+        // Set column widths: RuleID=20, When=50, Description & Message=50, others=20
+        sheet.setColumnWidth(0, 20 * 256); // RuleID
+        sheet.setColumnWidth(1, 50 * 256); // When
+        sheet.setColumnWidth(2, 100 * 256); // Description & Message
+        for (int i = 3; i < 7; i++) {
+            sheet.setColumnWidth(i, 20 * 256);
         }
         
         // Enable word wrap for all cells
@@ -229,7 +263,7 @@ public class RulesetToExcel {
         for (int i = 0; i <= rowNum; i++) {
             Row row = sheet.getRow(i);
             if (row != null) {
-                for (int j = 0; j < 3; j++) {
+                for (int j = 0; j < 7; j++) {
                     Cell cell = row.getCell(j);
                     if (cell != null) {
                         cell.setCellStyle(wrapStyle);
@@ -246,11 +280,15 @@ public class RulesetToExcel {
             if (data instanceof List) {
                 for (Object item : (List<?>) data) {
                     if (item instanceof Map) {
-                        extractRuleData((Map<String, Object>) item, rules);
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> mapItem = (Map<String, Object>) item;
+                        extractRuleData(mapItem, rules);
                     }
                 }
             } else if (data instanceof Map) {
-                extractRuleData((Map<String, Object>) data, rules);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> mapData = (Map<String, Object>) data;
+                extractRuleData(mapData, rules);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -265,7 +303,46 @@ public class RulesetToExcel {
         String message = (String) ruleData.get("message");
         String merged = mergeDescriptionAndMessage(desc, message);
 
-        rules.add(new RuleData(ruleId, when, merged));
+        // Extract labels
+        String source = "";
+        String target = "";
+        String domain = "";
+        String category = "";
+        Object labelsObj = ruleData.get("labels");
+        if (labelsObj instanceof List) {
+            for (Object labelObj : (List<?>) labelsObj) {
+                if (labelObj instanceof String) {
+                    String label = (String) labelObj;
+                    if (label.startsWith("konveyor.io/source=")) {
+                        String val = label.substring("konveyor.io/source=".length());
+                        if (!val.isEmpty()) {
+                            if (!source.isEmpty()) source += ", ";
+                            source += val;
+                        }
+                    } else if (label.startsWith("konveyor.io/target=")) {
+                        String val = label.substring("konveyor.io/target=".length());
+                        if (!val.isEmpty()) {
+                            if (!target.isEmpty()) target += ", ";
+                            target += val;
+                        }
+                    } else if (label.startsWith("domain=")) {
+                        String val = label.substring("domain=".length());
+                        if (!val.isEmpty()) {
+                            if (!domain.isEmpty()) domain += ", ";
+                            domain += val;
+                        }
+                    } else if (label.startsWith("category=")) {
+                        String val = label.substring("category=".length());
+                        if (!val.isEmpty()) {
+                            if (!category.isEmpty()) category += ", ";
+                            category += val;
+                        }
+                    }
+                }
+            }
+        }
+
+        rules.add(new RuleData(ruleId, when, merged, source, target, domain, category));
     }
 
     private static String serializeWhen(Object whenObj) {
@@ -291,11 +368,22 @@ public class RulesetToExcel {
         String ruleId;
         String when;
         String mergedDescription;
+        String source;
+        String target;
+        String domain;
+        String category;
 
         RuleData(String ruleId, String when, String mergedDescription) {
+            this(ruleId, when, mergedDescription, "", "", "", "");
+        }
+        RuleData(String ruleId, String when, String mergedDescription, String source, String target, String domain, String category) {
             this.ruleId = ruleId;
             this.when = when;
             this.mergedDescription = mergedDescription;
+            this.source = source;
+            this.target = target;
+            this.domain = domain;
+            this.category = category;
         }
     }
 }
