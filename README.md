@@ -42,4 +42,8 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar rulesetpath=/path/to/rulesets outputpat
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Thank You
+
+We would like to express our sincere gratitude to every member of the AppCAT team for their dedication, hard work, and contributions to making this project possible. Your expertise and commitment to application containerization and transformation help organizations modernize their applications. Thank you! 
