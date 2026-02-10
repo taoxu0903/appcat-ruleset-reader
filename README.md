@@ -63,10 +63,10 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar action=<action> rulesetpath=<path> outp
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `action` | No | Action to perform: `extract` or `analyze-spring` (default: extract if not specified) |
+| `action` | Yes | Action to perform: `extract` or `analyze-spring` |
 | `rulesetpath` | Yes (extract only) | Path to the directory containing AppCat rulesets |
 | `outputpath` | Yes | Path where the Excel file will be saved/read |
-| `filters` | No | Comma-separated list of directory name filters (supports partial matching) |
+| `filters` | No | Comma-separated list of directory name filters (exact match or substring match) |
 
 ### Usage Examples
 
@@ -91,7 +91,7 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar \
   filters=azure,cloud-readiness,openjdk11,openjdk17,openjdk21,os
 ```
 
-**Result**: Only processes directories matching the filter names (exact or partial match)
+**Result**: Only processes directories where the name exactly matches a filter OR contains the filter as a substring
 
 #### Example 3: Analyze Spring-Specific Rules
 
@@ -149,7 +149,7 @@ labels:
 **Structure:**
 - One sheet per processed ruleset
 - Each sheet contains:
-  - Row 1: Description header and ruleset metadata
+  - Row 1: Contains "Description" label and ruleset name + description from ruleset.yaml
   - Row 2: Column headers (RuleID, When, Description & Message, Source, Target, Domain, Category)
   - Row 3+: Rule data
 
