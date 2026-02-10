@@ -73,7 +73,6 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar outputpath=<path> action=analyze-spring
 **Arguments:**
 - `outputpath` (required): Path to the directory containing the existing `appcat-ruleset.xlsx` file
 - `action` (required): Must be set to `analyze-spring`
-- `filters` (optional): Can be used but not currently utilized by this action
 
 **Example:**
 ```bash
@@ -105,7 +104,7 @@ Filters allow you to selectively process specific ruleset subdirectories:
 - Filter names should match the subdirectory names in your ruleset path
 - Multiple filters are comma-separated
 - If filters are not specified, all subdirectories are processed
-- Filtering is case-sensitive and supports partial matches
+- Filtering supports both exact name matching and partial substring matching (e.g., filter "openjdk" will match directories "openjdk11", "openjdk17", etc.)
 
 **Common filter examples:**
 - `azure` - Azure migration rules
