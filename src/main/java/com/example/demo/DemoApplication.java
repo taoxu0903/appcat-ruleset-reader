@@ -13,13 +13,17 @@ import java.util.ArrayList;
 @SpringBootApplication
 public class DemoApplication {
 
-    private static String rulesetPath;
-    private static String outputPath;
-    private static List<String> filters;
-    private static String action;
-    // Define supported actions as static strings
-    public static final String ACTION_EXTRACT = "extract";
-    public static final String ACTION_ANALYZE_SPRING = "analyze-spring";
+        // Define supported actions as static strings
+        public static final String ACTION_EXTRACT = "extract";
+        public static final String ACTION_ANALYZE_SPRING = "analyze-spring";
+        public static final String ACTION_EXTRACT_V2 = "extract-v2";
+
+        private static String rulesetPath;
+        private static String outputPath;
+        private static List<String> filters = Arrays.asList(
+            "azure", "cloud-readiness", "openjdk8", "openjdk11",
+            "openjdk17", "openjdk21", "os", "jakarta-ee");
+        private static String action = ACTION_EXTRACT_V2;
 
     public static void main(String[] args) {
         SpringApplication.run(DemoApplication.class, args);
@@ -33,7 +37,7 @@ public class DemoApplication {
                 System.err.println("Error: Arguments are required");
                 System.err.println(
                         "Usage: java -jar demo.jar rulesetpath=<path> outputpath=<path> filters=<filter1,filter2,...> action=<"
-                                + ACTION_EXTRACT + "|" + ACTION_ANALYZE_SPRING + ">");
+                                + ACTION_EXTRACT + "|" + ACTION_ANALYZE_SPRING + "|" + ACTION_EXTRACT_V2 + ">");
                 System.exit(1);
             }
             for (String arg : args) {
@@ -70,6 +74,13 @@ public class DemoApplication {
                 System.err.println("Error: outputpath are required");
                 System.err.println("Usage: java -jar demo.jar outputpath=<path> filters=<filter1,filter2,...> action=<"
                         + ACTION_ANALYZE_SPRING + ">");
+                System.exit(1);
+            }
+            if (ACTION_EXTRACT_V2.equalsIgnoreCase(action) && (rulesetPath == null || outputPath == null)) {
+                System.err.println("Error: rulesetpath, outputpath are required");
+                System.err.println(
+                        "Usage: java -jar demo.jar rulesetpath=<path> outputpath=<path> filters=<filter1,filter2,...> action=<"
+                                + ACTION_EXTRACT_V2 + ">");
                 System.exit(1);
             }
 
@@ -111,9 +122,34 @@ public class DemoApplication {
                 System.out.println("Output folder path: " + outputPath);
 
                 RulesetToExcel.recognizeSpringRules(outputPath);
+            } else if (ACTION_EXTRACT_V2.equalsIgnoreCase(action)) {
+                File rulesetFolder = new File(rulesetPath);
+                File outputFolder = new File(outputPath);
+                if (!rulesetFolder.exists() || !rulesetFolder.isDirectory()) {
+                    System.err.println("Error: The specified ruleset path is not a valid directory: " + rulesetPath);
+                    System.exit(1);
+                }
+                if (!outputFolder.exists()) {
+                    boolean created = outputFolder.mkdirs();
+                    if (!created) {
+                        System.err.println("Error: Could not create output directory: " + outputPath);
+                        System.exit(1);
+                    }
+                } else if (!outputFolder.isDirectory()) {
+                    System.err.println("Error: The specified output path is not a directory: " + outputPath);
+                    System.exit(1);
+                }
+                System.out.println("Ruleset folder path: " + rulesetPath);
+                System.out.println("Output folder path: " + outputPath);
+                if (filters != null) {
+                    System.out.println("Filters applied: " + filters);
+                } else {
+                    System.out.println("No filters applied - processing all subdirectories");
+                }
+                RulesetToExcel.executeV2(rulesetPath, outputPath, filters);
             } else {
                 System.err.println("Error: Unknown action '" + action + "'. Supported actions: " + ACTION_EXTRACT + ", "
-                        + ACTION_ANALYZE_SPRING);
+                        + ACTION_ANALYZE_SPRING + ", " + ACTION_EXTRACT_V2);
                 System.exit(1);
             }
         }

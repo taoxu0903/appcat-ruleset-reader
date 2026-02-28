@@ -155,6 +155,168 @@ public class RulesetToExcel {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // extract-v2: CSV export
+    // -------------------------------------------------------------------------
+
+    public static void executeV2(String rulesetPath, String outputPath, List<String> filters) {
+        String outputFile = outputPath + "/appcat-ruleset.csv";
+
+        // Delete existing CSV before writing
+        File csvFile = new File(outputFile);
+        if (csvFile.exists()) {
+            if (!csvFile.delete()) {
+                System.err.println("Could not delete existing CSV file: " + outputFile);
+                return;
+            }
+        }
+
+        List<String[]> rows = new ArrayList<>();
+        // Header row
+        rows.add(new String[]{
+            "ruleID", "description", "message", "category (criticality)",
+            "effort", "domain", "label_category", "target", "capability", "os", "when"
+        });
+
+        File rootDir = new File(rulesetPath);
+        if (!rootDir.isDirectory()) {
+            System.err.println("Specified path is not a directory: " + rulesetPath);
+            return;
+        }
+
+        File[] subDirs = rootDir.listFiles(File::isDirectory);
+        if (subDirs != null) {
+            for (File subDir : subDirs) {
+                if (filters != null && !filters.isEmpty()) {
+                    boolean shouldProcess = false;
+                    String dirName = subDir.getName();
+                    for (String filter : filters) {
+                        if (dirName.equals(filter) || dirName.contains(filter)) {
+                            shouldProcess = true;
+                            break;
+                        }
+                    }
+                    if (!shouldProcess) {
+                        System.out.println("Skipping directory: " + subDir.getName() + " (not in filter list)");
+                        continue;
+                    }
+                }
+                processSubDirectoryV2(subDir, rows);
+            }
+        }
+
+        try (java.io.OutputStreamWriter writer =
+                new java.io.OutputStreamWriter(new java.io.FileOutputStream(outputFile), java.nio.charset.StandardCharsets.UTF_8)) {
+            // Write UTF-8 BOM so Excel opens it correctly
+            writer.write('\uFEFF');
+            for (String[] row : rows) {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < row.length; i++) {
+                    if (i > 0) sb.append(',');
+                    sb.append(escapeCsv(row[i] != null ? row[i] : ""));
+                }
+                sb.append("\r\n");
+                writer.write(sb.toString());
+            }
+            writer.flush();
+            System.out.println("CSV file generated successfully: " + outputFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void processSubDirectoryV2(File subDir, List<String[]> rows) {
+        File[] yamlFiles = subDir.listFiles(file ->
+                file.isFile() &&
+                file.getName().endsWith(".yaml") &&
+                !file.getName().equals("ruleset.yaml")
+        );
+        if (yamlFiles == null) return;
+        for (File yamlFile : yamlFiles) {
+            try (InputStream input = new FileInputStream(yamlFile)) {
+                Yaml yaml = new Yaml();
+                Object data = yaml.load(input);
+                if (data instanceof List) {
+                    for (Object item : (List<?>) data) {
+                        if (item instanceof Map) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> mapItem = (Map<String, Object>) item;
+                            String[] row = extractRuleDataV2(mapItem);
+                            if (row != null) rows.add(row);
+                        }
+                    }
+                } else if (data instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> mapData = (Map<String, Object>) data;
+                    String[] row = extractRuleDataV2(mapData);
+                    if (row != null) rows.add(row);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static String[] extractRuleDataV2(Map<String, Object> ruleData) {
+        String ruleId       = nullToEmpty((String) ruleData.get("ruleID"));
+        String description  = nullToEmpty((String) ruleData.get("description"));
+        String message      = nullToEmpty((String) ruleData.get("message"));
+        String criticality  = nullToEmpty((String) ruleData.get("category"));
+        String effort       = ruleData.get("effort") != null ? String.valueOf(ruleData.get("effort")) : "";
+        String when         = serializeWhen(ruleData.get("when"));
+
+        // Label extraction — supports both plain "key=value" and "konveyor.io/key=value"
+        String domain      = "";
+        String labelCat    = "";
+        String target      = "";
+        String capability  = "";
+        String os          = "";
+
+        Object labelsObj = ruleData.get("labels");
+        if (labelsObj instanceof List) {
+            for (Object labelObj : (List<?>) labelsObj) {
+                if (!(labelObj instanceof String)) continue;
+                String label = (String) labelObj;
+                if (label.startsWith("domain=")) {
+                    String val = label.substring("domain=".length()).trim();
+                    if (!val.isEmpty()) { if (!domain.isEmpty()) domain += ", "; domain += val; }
+                } else if (label.startsWith("category=")) {
+                    String val = label.substring("category=".length()).trim();
+                    if (!val.isEmpty()) { if (!labelCat.isEmpty()) labelCat += ", "; labelCat += val; }
+                } else if (label.startsWith("target=")) {
+                    String val = label.substring("target=".length()).trim();
+                    if (!val.isEmpty()) { if (!target.isEmpty()) target += ", "; target += val; }
+                } else if (label.startsWith("konveyor.io/target=")) {
+                    String val = label.substring("konveyor.io/target=".length()).trim();
+                    if (!val.isEmpty()) { if (!target.isEmpty()) target += ", "; target += val; }
+                } else if (label.startsWith("capability=")) {
+                    String val = label.substring("capability=".length()).trim();
+                    if (!val.isEmpty()) { if (!capability.isEmpty()) capability += ", "; capability += val; }
+                } else if (label.startsWith("os=")) {
+                    String val = label.substring("os=".length()).trim();
+                    if (!val.isEmpty()) { if (!os.isEmpty()) os += ", "; os += val; }
+                }
+            }
+        }
+
+        return new String[]{ ruleId, description, message, criticality, effort, domain, labelCat, target, capability, os, when };
+    }
+
+    private static String escapeCsv(String value) {
+        if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
+    }
+
+    // -------------------------------------------------------------------------
+    // extract (v1): Excel export
+    // -------------------------------------------------------------------------
+
     private static void processRulesetFolder(File rootDir, Workbook workbook, List<String> filters) {
         for (File subDir : rootDir.listFiles(File::isDirectory)) {
             // Skip if filters are provided and this directory is not in the filter list
