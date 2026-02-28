@@ -33,7 +33,7 @@ mvn clean package -DskipTests
 ## Running the Application
 
 ```bash
-java -jar target/demo-0.0.1-SNAPSHOT.jar [rulesetpath=<path>] [outputpath=<path>] [filters=<f1,f2,...>] [action=<action>]
+java -jar target/appcat-ruleset-reader-1.0.0.jar [rulesetpath=<path>] [outputpath=<path>] [filters=<f1,f2,...>] [action=<action>]
 ```
 
 All four arguments have built-in defaults and can be omitted:
@@ -73,12 +73,12 @@ The file is UTF-8 with BOM so it opens correctly in Excel.
 
 **Example (no arguments — uses all defaults):**
 ```bash
-java -jar target/demo-0.0.1-SNAPSHOT.jar
+java -jar target/appcat-ruleset-reader-1.0.0.jar
 ```
 
 **Example (override paths only):**
 ```bash
-java -jar target/demo-0.0.1-SNAPSHOT.jar rulesetpath=/path/to/rulesets outputpath=./output
+java -jar target/appcat-ruleset-reader-1.0.0.jar rulesetpath=/path/to/rulesets outputpath=./output
 ```
 
 ---
@@ -89,7 +89,7 @@ Writes **`appcat-ruleset.xlsx`** — one Excel sheet per matched subdirectory.
 Each sheet contains: `RuleID`, `When`, `Description & Message`, `Source`, `Target`, `Domain`, `Category`.
 
 ```bash
-java -jar target/demo-0.0.1-SNAPSHOT.jar rulesetpath=<path> outputpath=<path> action=extract
+java -jar target/appcat-ruleset-reader-1.0.0.jar rulesetpath=<path> outputpath=<path> action=extract
 ```
 
 ---
@@ -100,7 +100,7 @@ Post-processes an existing **`appcat-ruleset.xlsx`** in the output folder.
 Adds a `spring specific?` column (`Yes` / `No`) to each sheet, based on whether any cell contains `"spring"` or the `When` column contains `"properties|"`.
 
 ```bash
-java -jar target/demo-0.0.1-SNAPSHOT.jar outputpath=<path> action=analyze-spring
+java -jar target/appcat-ruleset-reader-1.0.0.jar outputpath=<path> action=analyze-spring
 ```
 
 ---

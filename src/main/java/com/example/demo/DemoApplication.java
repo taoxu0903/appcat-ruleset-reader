@@ -33,13 +33,6 @@ public class DemoApplication {
     public static class CliRunner implements CommandLineRunner {
         @Override
         public void run(String... args) {
-            if (args.length == 0) {
-                System.err.println("Error: Arguments are required");
-                System.err.println(
-                        "Usage: java -jar demo.jar rulesetpath=<path> outputpath=<path> filters=<filter1,filter2,...> action=<"
-                                + ACTION_EXTRACT + "|" + ACTION_ANALYZE_SPRING + "|" + ACTION_EXTRACT_V2 + ">");
-                System.exit(1);
-            }
             for (String arg : args) {
                 System.out.println("Processing argument: " + arg);
                 if (arg.startsWith("rulesetpath=")) {

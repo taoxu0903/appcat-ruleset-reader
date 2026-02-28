@@ -12,9 +12,9 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>demo</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>demo</name>
+    <artifactId>appcat-ruleset-reader</artifactId>
+    <version>1.0.0</version>
+    <name>appcat-ruleset-reader</name>
     <description>Spring Boot 3 Demo Project</description>
 
     <properties>
