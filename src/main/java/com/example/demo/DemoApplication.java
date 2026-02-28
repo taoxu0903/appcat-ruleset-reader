@@ -18,8 +18,8 @@ public class DemoApplication {
         public static final String ACTION_ANALYZE_SPRING = "analyze-spring";
         public static final String ACTION_EXTRACT_V2 = "extract-v2";
 
-        private static String rulesetPath;
-        private static String outputPath;
+        private static String rulesetPath = "C:\\Users\\taoxu\\Downloads\\appcat\\rulesets";
+        private static String outputPath = "C:\\Users\\taoxu\\Downloads\\appcat\\rulesets\\extraction-v2";
         private static List<String> filters = Arrays.asList(
             "azure", "cloud-readiness", "openjdk8", "openjdk11",
             "openjdk17", "openjdk21", "os", "jakarta-ee");
