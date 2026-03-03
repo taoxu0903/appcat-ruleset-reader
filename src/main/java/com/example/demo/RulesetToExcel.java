@@ -191,7 +191,7 @@ public class RulesetToExcel {
                     boolean shouldProcess = false;
                     String dirName = subDir.getName();
                     for (String filter : filters) {
-                        if (dirName.equals(filter) || dirName.contains(filter)) {
+                        if (dirName.equals(filter)) {
                             shouldProcess = true;
                             break;
                         }
@@ -326,7 +326,7 @@ public class RulesetToExcel {
                 
                 // Check if any filter matches this directory
                 for (String filter : filters) {
-                    if (dirName.equals(filter) || dirName.contains(filter)) {
+                    if (dirName.equals(filter)) {
                         shouldProcess = true;
                         break;
                     }
